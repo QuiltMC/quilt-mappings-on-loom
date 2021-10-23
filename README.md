@@ -30,12 +30,12 @@ pluginManagement {
 ```groovy
 plugins {
   // ...
-  plugin "com.oroarmor.quilt-mappings-on-loom" version "1.0.0"
+  plugin "quilt-mappings-on-loom" version "1.0.0"
 }
 
 // ...
 
 dependencies {
-  mappings quiltmappings.mappings("org.quiltmc:quilt-mappings:${minecraft_version}", true)
+  mappings quiltmappings.mappings("org.quiltmc:quilt-mappings:${minecraft_version}+build.${project.quilt_mappings}:v2", true)
 }
 ```
