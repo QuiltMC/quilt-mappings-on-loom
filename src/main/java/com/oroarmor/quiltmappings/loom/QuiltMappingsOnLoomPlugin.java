@@ -1,19 +1,20 @@
 package com.oroarmor.quiltmappings.loom;
 
+import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Set;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
-import org.gradle.api.artifacts.Dependency;
 import org.gradle.util.GFileUtils;
 
-import net.fabricmc.loom.api.LoomGradleExtensionAPI;
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
 import net.fabricmc.loom.api.mappings.layered.MappingLayer;
 import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
@@ -51,20 +52,18 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
             this.project = project;
         }
 
-        public Dependency mappings(String quiltMappings, boolean snapshot) {
-            return project.getExtensions().getByType(LoomGradleExtensionAPI.class).layered(layeredMappingSpecBuilder -> {
-                layeredMappingSpecBuilder.addLayer(new MappingsSpec<>() {
-                    @Override
-                    public MappingLayer createLayer(MappingContext context) {
-                        return new QuiltMappingsLayer(context, project, quiltMappings, snapshot);
-                    }
+        public MappingsSpec<?> mappings(String quiltMappings, boolean snapshot) {
+            return new MappingsSpec<>() {
+                @Override
+                public MappingLayer createLayer(MappingContext context) {
+                    return new QuiltMappingsLayer(context, project, quiltMappings, snapshot);
+                }
 
-                    @Override
-                    public int hashCode() {
-                        return Objects.hash(quiltMappings, snapshot);
-                    }
-                });
-            });
+                @Override
+                public int hashCode() {
+                    return Objects.hash(quiltMappings, snapshot);
+                }
+            };
         }
     }
 
@@ -75,7 +74,7 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
         public void visit(MappingVisitor mappingVisitor) throws IOException {
             String minecraftVersion = context.minecraftProvider().minecraftVersion();
 
-            File intermediaryToQm = project.file(".gradle/qm/qm_to_intermediary_" + minecraftVersion + ".tiny");
+            File intermediaryToQm = project.file(".gradle/qm/qm_to_intermediary_" + quiltMappings + ".tiny");
 
             if (!intermediaryToQm.exists()) {
                 Set<File> quiltmappings = project.getConfigurations().detachedConfiguration(project.getDependencies().create(quiltMappings)).resolve();
@@ -88,17 +87,21 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
                 downloadFile(quiltmappings, quiltMappingsFile);
 
                 MemoryMappingTree mappings = new MemoryMappingTree();
+                MappingSourceNsSwitch sourceNsSwitch = new MappingSourceNsSwitch(mappings, MappingsNamespace.OFFICIAL.toString());
 
-                MemoryMappingTree qm = new MemoryMappingTree();
-                Tiny2Reader.read(new FileReader(quiltMappingsFile), qm);
+                MemoryMappingTree hashed = new MemoryMappingTree();
+                try (FileReader reader = new FileReader(hashedFile)) {
+                    Tiny2Reader.read(reader, hashed);
+                }
+                hashed.accept(sourceNsSwitch);
 
-                MemoryMappingTree intermediary = new MemoryMappingTree();
-                Tiny2Reader.read(new FileReader(context.mappingsProvider().intermediaryTinyFile()), intermediary);
+                try (FileReader reader = new FileReader(quiltMappingsFile)) {
+                    Tiny2Reader.read(reader, mappings);
+                }
 
-                qm.accept(mappings);
-                intermediary.accept(new MappingNsRenamer(mappings, Collections.singletonMap("obfuscated", "official")));
-
-                mappings.accept(new MappingSourceNsSwitch(new MappingDstNsReorder(MappingWriter.create(new FileWriter(intermediaryToQm), MappingFormat.TINY_2), "named"), "intermediary"));
+                try (MappingWriter writer = MappingWriter.create(new FileWriter(intermediaryToQm), MappingFormat.TINY_2)) {
+                    mappings.accept(writer);
+                }
             }
 
             Tiny2Reader.read(new FileReader(intermediaryToQm), mappingVisitor);
@@ -118,7 +121,7 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
 
         @Override
         public MappingsNamespace getSourceNamespace() {
-            return MappingsNamespace.INTERMEDIARY;
+            return MappingsNamespace.OFFICIAL;
         }
 
         @Override

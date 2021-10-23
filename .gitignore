@@ -1,3 +1,6 @@
 /.gradle/
 /.idea/
 /build/
+/test/build/
+/test/.gradle/
+/test/run/
