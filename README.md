@@ -30,7 +30,7 @@ pluginManagement {
 ```groovy
 plugins {
   // ...
-  plugin "quilt-mappings-on-loom" version "1.0.0"
+  id "quilt-mappings-on-loom" version "1.0.0"
 }
 
 // ...
