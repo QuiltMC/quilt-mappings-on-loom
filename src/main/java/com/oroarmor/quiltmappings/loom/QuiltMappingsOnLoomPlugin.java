@@ -74,7 +74,7 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
         public void visit(MappingVisitor mappingVisitor) throws IOException {
             String minecraftVersion = context.minecraftProvider().minecraftVersion();
 
-            File intermediaryToQm = project.file(".gradle/qm/qm_to_intermediary_" + quiltMappings + ".tiny");
+            File intermediaryToQm = project.file(".gradle/qm/qm_to_intermediary_" + quiltMappings.split(':')[2] + ".tiny");
 
             if (!intermediaryToQm.exists()) {
                 Set<File> quiltmappings = project.getConfigurations().detachedConfiguration(project.getDependencies().create(quiltMappings)).resolve();
