@@ -4,8 +4,8 @@ plugins {
     `maven-publish`
 }
 
-group = "com.oroarmor"
-version = "2.0.0"
+group = "org.quiltmc"
+version = "3.0.0"
 
 repositories {
     mavenCentral()
@@ -19,14 +19,13 @@ dependencies {
     implementation("net.fabricmc:mapping-io:0.2.1")
     implementation("net.fabricmc:lorenz-tiny:4.0.2")
     implementation("net.fabricmc:tiny-mappings-parser:0.2.2.14")
-    implementation("net.fabricmc:stitch:0.6.1")
 }
 
 gradlePlugin {
     plugins {
         create("quiltMappingsLoom") {
             id = "quilt-mappings-on-loom"
-            implementationClass = "com.oroarmor.quiltmappings.loom.QuiltMappingsOnLoomPlugin"
+            implementationClass = "org.quiltmc.quiltmappings.loom.QuiltMappingsOnLoomPlugin"
         }
     }
 }
@@ -47,7 +46,7 @@ publishing {
                     username = System.getenv("MAVEN_USERNAME")
                     password = System.getenv("MAVEN_PASSWORD")
                 }
-                name = "OroArmorMaven"
+                name = "Maven"
             }
         }
     }

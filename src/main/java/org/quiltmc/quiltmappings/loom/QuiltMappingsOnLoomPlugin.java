@@ -1,15 +1,12 @@
-package com.oroarmor.quiltmappings.loom;
+package org.quiltmc.quiltmappings.loom;
 
-import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.util.Collections;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Objects;
-import java.util.Set;
 
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -21,9 +18,6 @@ import net.fabricmc.loom.api.mappings.layered.MappingsNamespace;
 import net.fabricmc.loom.api.mappings.layered.spec.MappingsSpec;
 import net.fabricmc.mappingio.MappingVisitor;
 import net.fabricmc.mappingio.MappingWriter;
-import net.fabricmc.mappingio.adapter.MappingDstNsReorder;
-import net.fabricmc.mappingio.adapter.MappingNsRenamer;
-import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import net.fabricmc.mappingio.format.MappingFormat;
 import net.fabricmc.mappingio.format.Tiny2Reader;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
@@ -32,7 +26,7 @@ import net.fabricmc.mappingio.tree.MemoryMappingTree;
 public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
     @Override
     public void apply(Project target) {
-        target.getExtensions().create("quiltmappings", QuiltMappingsOnLoomExtension.class, target);
+        target.getExtensions().create("quiltMappings", QuiltMappingsOnLoomExtension.class);
 
         target.getRepositories().maven(repo -> {
             repo.setName("Quilt Releases");
@@ -52,48 +46,54 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
             this.project = project;
         }
 
+        @Deprecated
         public MappingsSpec<?> mappings(String quiltMappings, boolean snapshot) {
-            return new MappingsSpec<>() {
-                @Override
-                public MappingLayer createLayer(MappingContext context) {
-                    return new QuiltMappingsLayer(context, project, quiltMappings, snapshot);
-                }
+            return mappings(quiltMappings);
+        }
 
-                @Override
-                public int hashCode() {
-                    return Objects.hash(quiltMappings, snapshot);
-                }
-            };
+        public MappingsSpec<?> mappings(String quiltMappings) {
+            return new MappingLayerMappingsSpec(project, quiltMappings);
+        }
+
+        private record MappingLayerMappingsSpec(Project project, String quiltMappings)
+                implements MappingsSpec<MappingLayer> {
+            @Override
+            public MappingLayer createLayer(MappingContext context) {
+                return new QuiltMappingsLayer(context, project, quiltMappings);
+            }
+
+            @Override
+            public int hashCode() {
+                return Objects.hash(quiltMappings);
+            }
         }
     }
 
-    private record QuiltMappingsLayer(MappingContext context, Project project, String quiltMappings,
-                                      boolean snapshot) implements MappingLayer {
-
+    private record QuiltMappingsLayer(MappingContext context, Project project, String quiltMappings)
+            implements MappingLayer {
         @Override
         public void visit(MappingVisitor mappingVisitor) throws IOException {
             String minecraftVersion = context.minecraftProvider().minecraftVersion();
 
-            File intermediaryToQm = project.file(".gradle/qm/qm_to_intermediary_" + quiltMappings.split(':')[2] + ".tiny");
+            String quiltMappingsBuild = "+build" + quiltMappings.substring(quiltMappings.lastIndexOf("."), quiltMappings.lastIndexOf(":"));
+            File intermediaryToQm = project.file(".gradle/qm/qm_to_intermediary_" + minecraftVersion + quiltMappingsBuild + ".tiny");
 
             if (!intermediaryToQm.exists()) {
-                Set<File> quiltmappings = project.getConfigurations().detachedConfiguration(project.getDependencies().create(quiltMappings)).resolve();
-                Set<File> hashedFiles = project.getConfigurations().detachedConfiguration(project.getDependencies().create("org.quiltmc:hashed:" + minecraftVersion + (snapshot ? "-SNAPSHOT" : ""))).resolve();
+                List<File> quiltMappings = new ArrayList<>(project.getConfigurations().detachedConfiguration(project.getDependencies().create(this.quiltMappings)).resolve());
 
-                File hashedFile = project.file(".gradle/qm/hashed_" + minecraftVersion + ".tiny");
-                downloadFile(hashedFiles, hashedFile);
+                File hashedFile = project.file(".gradle/qm/hashed_" + minecraftVersion + quiltMappingsBuild + ".tiny");
+                downloadFile(quiltMappings.get(1), hashedFile);
 
-                File quiltMappingsFile = project.file(".gradle/qm/qm_" + minecraftVersion + ".tiny");
-                downloadFile(quiltmappings, quiltMappingsFile);
+                File quiltMappingsFile = project.file(".gradle/qm/qm_" + minecraftVersion + quiltMappingsBuild + ".tiny");
+                downloadFile(quiltMappings.get(0), quiltMappingsFile);
 
                 MemoryMappingTree mappings = new MemoryMappingTree();
-                MappingSourceNsSwitch sourceNsSwitch = new MappingSourceNsSwitch(mappings, MappingsNamespace.OFFICIAL.toString());
 
                 MemoryMappingTree hashed = new MemoryMappingTree();
                 try (FileReader reader = new FileReader(hashedFile)) {
                     Tiny2Reader.read(reader, hashed);
                 }
-                hashed.accept(sourceNsSwitch);
+                hashed.accept(mappings);
 
                 try (FileReader reader = new FileReader(quiltMappingsFile)) {
                     Tiny2Reader.read(reader, mappings);
@@ -107,10 +107,10 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
             Tiny2Reader.read(new FileReader(intermediaryToQm), mappingVisitor);
         }
 
-        private void downloadFile(Set<File> dependency, File output) {
+        private void downloadFile(File dependency, File output) {
             if (!output.exists()) {
                 GFileUtils.copyFile(project
-                        .zipTree(dependency.stream().iterator().next())
+                        .zipTree(dependency)
                         .getFiles()
                         .stream()
                         .filter(file -> file.getName().endsWith("mappings.tiny"))
@@ -122,11 +122,6 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
         @Override
         public MappingsNamespace getSourceNamespace() {
             return MappingsNamespace.OFFICIAL;
-        }
-
-        @Override
-        public int hashCode() {
-            return quiltMappings.hashCode();
         }
     }
 }

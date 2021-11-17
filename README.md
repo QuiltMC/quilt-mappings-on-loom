@@ -22,7 +22,7 @@ Currently, 1.17.1+ is only has support, with no plans of backporting to earlier 
 ```groovy
 pluginManagement {
     repositories {
-        maven { url = "https://maven.oroarmor.com" }
+        maven { url = "https://maven.quiltmc.org/repository/release" }
     }
 }
 ``` 
@@ -30,14 +30,14 @@ pluginManagement {
 ```groovy
 plugins {
   // ...
-  id "quilt-mappings-on-loom" version "2.0.0"
+  id "quilt-mappings-on-loom" version "3.0.0"
 }
 
 // ...
 
 dependencies {
    mappings(loom.layered {
-      addLayer(quiltmappings.mappings("org.quiltmc:quilt-mappings:${minecraft_version}+build.${project.quilt_mappings}:v2", true))
+      addLayer(quiltmappings.mappings("org.quiltmc:quilt-mappings:${minecraft_version}+build.${project.quilt_mappings}:v2"))
    })
 }
 ```

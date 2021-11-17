@@ -5,7 +5,7 @@ pluginManagement {
 		maven {
 			url = uri("https://maven.fabricmc.net/")
 		}
-		maven { url = uri("https://maven.oroarmor.com") }
+		maven { url = uri("https://maven.quiltmc.org/repository/release") }
 	}
 }
 
