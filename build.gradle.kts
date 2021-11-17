@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.quiltmc"
-version = "3.0.0"
+version = "3.1.0"
 
 repositories {
     mavenCentral()
@@ -31,7 +31,7 @@ dependencies {
 gradlePlugin {
     plugins {
         create("quiltMappingsLoom") {
-            id = "quilt-mappings-on-loom"
+            id = "org.quiltmc.quilt-mappings-on-loom"
             implementationClass = "org.quiltmc.quiltmappings.loom.QuiltMappingsOnLoomPlugin"
         }
     }
