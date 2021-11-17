@@ -38,12 +38,6 @@ gradlePlugin {
 }
 
 publishing {
-    publications {
-        create<MavenPublication>("mavenJava") {
-            artifact(tasks.jar)
-        }
-    }
-
     repositories {
         mavenLocal()
         if (System.getenv("MAVEN_URL") != null) {
