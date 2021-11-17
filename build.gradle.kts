@@ -2,6 +2,7 @@ plugins {
     java
     `java-gradle-plugin`
     `maven-publish`
+    id("com.diffplug.spotless") version "6.0.0"
 }
 
 group = "org.quiltmc"
@@ -14,10 +15,16 @@ repositories {
     }
 }
 
+spotless {
+    java {
+        // Use comma separator for openjdk like license headers
+        licenseHeaderFile(file("HEADER")).yearSeparator(", ")
+    }
+}
+
 dependencies {
     implementation("net.fabricmc:fabric-loom:0.10-SNAPSHOT")
     implementation("net.fabricmc:mapping-io:0.2.1")
-    implementation("net.fabricmc:lorenz-tiny:4.0.2")
     implementation("net.fabricmc:tiny-mappings-parser:0.2.2.14")
 }
 

@@ -14,8 +14,8 @@ repositories {
     }
 }
 
-var minecraft_version = "1.18-pre2"
-var quilt_mappings = "1.18-pre2+build.3"
+var minecraft_version = "1.18-pre3"
+var quilt_mappings = "1.18-pre3+build.2"
 var loader_version = "0.12.2"
 
 dependencies {
