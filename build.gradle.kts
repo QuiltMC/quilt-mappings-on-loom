@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.quiltmc"
-version = "3.1.0"
+version = "3.1.1"
 
 repositories {
     mavenCentral()
@@ -35,6 +35,11 @@ gradlePlugin {
             implementationClass = "org.quiltmc.quiltmappings.loom.QuiltMappingsOnLoomPlugin"
         }
     }
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_16
+    targetCompatibility = JavaVersion.VERSION_16
 }
 
 publishing {
