@@ -30,14 +30,14 @@ pluginManagement {
 ```groovy
 plugins {
   // ...
-  id "org.quiltmc.quilt-mappings-on-loom" version "3.1.0"
+  id "org.quiltmc.quilt-mappings-on-loom" version "3.1.1"
 }
 
 // ...
 
 dependencies {
    mappings(loom.layered {
-      addLayer(quiltmappings.mappings("org.quiltmc:quilt-mappings:${minecraft_version}+build.${project.quilt_mappings}:v2"))
+      addLayer(quiltMappings.mappings("org.quiltmc:quilt-mappings:${minecraft_version}+build.${project.quilt_mappings}:v2"))
    })
 }
 ```
