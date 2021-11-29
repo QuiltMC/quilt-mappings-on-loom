@@ -6,7 +6,7 @@ Ever wanted to use mappings other than Yarn or MojMap?
 
 [Quilt Mappings](https://github.com/QuiltMC/quilt-mappings) is a Yarn derivative that allows inspiration from MojMap, which allows Quilt Mappings to map the obscure constants in Minecraft code and more. 
 This gradle plugin allows Quilt Mappings to be used in Loom and Fabric environments. 
-Currently, 1.17.1+ is only has support, with no plans of backporting to earlier versions.
+Currently, only 1.17.1+ has support, with no plans of backporting to earlier versions.
 
 ## **Benefits of Quilt Mappings:**
 1. Faster turn around. 
