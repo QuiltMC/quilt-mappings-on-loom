@@ -40,7 +40,7 @@ import net.fabricmc.mappingio.tree.MemoryMappingTree;
 public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
     @Override
     public void apply(Project target) {
-        target.getExtensions().create("quiltMappings", QuiltMappingsOnLoomExtension.class);
+        target.getExtensions().create("quiltMappings", QuiltMappingsOnLoomExtension.class, target);
 
         target.getRepositories().maven(repo -> {
             repo.setName("Quilt Releases");
