@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.quiltmc"
-version = "3.1.1"
+version = "3.1.2"
 
 repositories {
     mavenCentral()
