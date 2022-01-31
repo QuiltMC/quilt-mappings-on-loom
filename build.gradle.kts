@@ -6,7 +6,7 @@ plugins {
 }
 
 group = "org.quiltmc"
-version = "3.1.2"
+version = "4.0.0"
 
 repositories {
     mavenCentral()
@@ -23,7 +23,7 @@ spotless {
 }
 
 dependencies {
-    implementation("net.fabricmc:fabric-loom:0.10-SNAPSHOT")
+    implementation("net.fabricmc:fabric-loom:0.11-SNAPSHOT")
     implementation("net.fabricmc:mapping-io:0.2.1")
     implementation("net.fabricmc:tiny-mappings-parser:0.2.2.14")
 }
