@@ -6,6 +6,7 @@ plugins {
 }
 
 group = "org.quiltmc"
+// Don't forget to update README.MD
 version = "4.0.0"
 
 repositories {
