@@ -1,7 +1,7 @@
 plugins {
     java
     id("fabric-loom") version "0.11.32"
-    id("org.quiltmc.quilt-mappings-on-loom") version "4.0.1"
+`    id("org.quiltmc.quilt-mappings-on-loom") version "4.1.0"
 }
 
 group = "org.quiltmc"

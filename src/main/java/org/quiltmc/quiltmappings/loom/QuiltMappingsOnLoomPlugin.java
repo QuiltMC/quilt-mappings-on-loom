@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
+import net.fabricmc.loom.configuration.providers.mappings.extras.unpick.UnpickLayer;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
@@ -74,6 +76,10 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
 
         private record MappingLayerMappingsSpec(Project project, String quiltMappings)
                 implements MappingsSpec<MappingLayer> {
+            private static final int HASH_CODE_VERSION_BASE = 1;
+            private static final int HASH_CODE_VERSION_EXTRA_BITS = 8;
+            private static final int HASH_CODE_VERSION = (1 << HASH_CODE_VERSION_EXTRA_BITS) + HASH_CODE_VERSION_BASE;
+
             @Override
             public MappingLayer createLayer(MappingContext context) {
                 return new QuiltMappingsLayer(context, project, quiltMappings);
@@ -81,14 +87,13 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
 
             @Override
             public int hashCode() {
-                // TODO: Change hashCode when mapping generation changes?
-                return Objects.hash(quiltMappings);
+                return Objects.hash(quiltMappings, HASH_CODE_VERSION);
             }
         }
     }
 
     private record QuiltMappingsLayer(MappingContext context, Project project, String quiltMappings)
-            implements MappingLayer {
+            implements MappingLayer, UnpickLayer {
         @Override
         public void visit(MappingVisitor mappingVisitor) throws IOException {
             String minecraftVersion = context.minecraftProvider().minecraftVersion();
@@ -100,10 +105,10 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
                 List<File> quiltMappings = new ArrayList<>(project.getConfigurations().detachedConfiguration(project.getDependencies().create(this.quiltMappings)).resolve());
 
                 File hashedFile = project.file(".gradle/qm/hashed_" + minecraftVersion + quiltMappingsBuild + ".tiny");
-                downloadFile(quiltMappings.get(1), hashedFile);
+                extractMappings(quiltMappings.get(1), hashedFile);
 
                 File quiltMappingsFile = project.file(".gradle/qm/qm_" + minecraftVersion + quiltMappingsBuild + ".tiny");
-                downloadFile(quiltMappings.get(0), quiltMappingsFile);
+                extractMappings(quiltMappings.get(0), quiltMappingsFile);
 
                 MemoryMappingTree mappings = new MemoryMappingTree();
 
@@ -125,13 +130,17 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
             Tiny2Reader.read(new FileReader(intermediaryToQm), mappingVisitor);
         }
 
-        private void downloadFile(File dependency, File output) {
+        private void extractMappings(File dependency, File output) {
+            extractFile(dependency, output, file -> file.getName().endsWith("mappings.tiny"));
+        }
+
+        private void extractFile(File dependency, File output, Predicate<File> filter) {
             if (!output.exists()) {
                 GFileUtils.copyFile(project
                         .zipTree(dependency)
                         .getFiles()
                         .stream()
-                        .filter(file -> file.getName().endsWith("mappings.tiny"))
+                        .filter(filter)
                         .findFirst()
                         .get(), output);
             }
@@ -140,6 +149,24 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
         @Override
         public MappingsNamespace getSourceNamespace() {
             return MappingsNamespace.OFFICIAL;
+        }
+
+        @Override
+        public UnpickData getUnpickData() throws IOException {
+            String minecraftVersion = context.minecraftProvider().minecraftVersion();
+
+            String quiltMappingsBuild = "+build" + quiltMappings.substring(quiltMappings.lastIndexOf("."), quiltMappings.lastIndexOf(":"));
+            File definitions = project.file(".gradle/qm/unpick_definitions_" + minecraftVersion + quiltMappingsBuild + ".unpick");
+            File metadata = project.file(".gradle/qm/unpick_metadata_" + minecraftVersion + quiltMappingsBuild + ".json");
+
+            if (!definitions.exists() || !metadata.exists()) {
+                List<File> quiltMappings = new ArrayList<>(project.getConfigurations().detachedConfiguration(project.getDependencies().create(this.quiltMappings)).resolve());
+
+                extractFile(quiltMappings.get(0), definitions, file -> file.getName().endsWith("definitions.unpick"));
+                extractFile(quiltMappings.get(0), metadata, file -> file.getName().endsWith("unpick.json"));
+            }
+
+            return UnpickData.read(metadata.toPath(), definitions.toPath());
         }
     }
 }
