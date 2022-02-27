@@ -1,7 +1,7 @@
 plugins {
     java
-    id("fabric-loom") version "0.10-SNAPSHOT"
-    id("quilt-mappings-on-loom") version "3.0.0"
+    id("fabric-loom") version "0.11.32"
+    id("org.quiltmc.quilt-mappings-on-loom") version "4.0.1"
 }
 
 group = "org.quiltmc"
@@ -14,8 +14,8 @@ repositories {
     }
 }
 
-var minecraft_version = "1.18-pre3"
-var quilt_mappings = "1.18-pre3+build.2"
+var minecraft_version = "1.18.2-rc1"
+var quilt_mappings = "1.18.2-rc1+build.1"
 var loader_version = "0.12.2"
 
 dependencies {

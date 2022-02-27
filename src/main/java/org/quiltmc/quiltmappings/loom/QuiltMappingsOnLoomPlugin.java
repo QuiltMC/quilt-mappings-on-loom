@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 QuiltMC
+ * Copyright 2021, 2022 QuiltMC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 
+import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.util.GFileUtils;
@@ -37,6 +38,7 @@ import net.fabricmc.mappingio.format.MappingFormat;
 import net.fabricmc.mappingio.format.Tiny2Reader;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
+@SuppressWarnings("UnstableApiUsage")
 public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
     @Override
     public void apply(Project target) {
@@ -79,6 +81,7 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
 
             @Override
             public int hashCode() {
+                // TODO: Change hashCode when mapping generation changes?
                 return Objects.hash(quiltMappings);
             }
         }
@@ -104,18 +107,18 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
 
                 MemoryMappingTree mappings = new MemoryMappingTree();
 
-                MemoryMappingTree hashed = new MemoryMappingTree();
-                try (FileReader reader = new FileReader(hashedFile)) {
-                    Tiny2Reader.read(reader, hashed);
-                }
-                hashed.accept(mappings);
-
+                // Load qm before hashed to avoid losing mappings without hashed names (i.e. unobfuscated names and <init>s)
                 try (FileReader reader = new FileReader(quiltMappingsFile)) {
                     Tiny2Reader.read(reader, mappings);
                 }
 
+                try (FileReader reader = new FileReader(hashedFile)) {
+                    // Change source namespace to hashed to allow merging with qm mapping tree
+                    Tiny2Reader.read(reader, new MappingSourceNsSwitch(mappings, "hashed"));
+                }
+
                 try (MappingWriter writer = MappingWriter.create(new FileWriter(intermediaryToQm), MappingFormat.TINY_2)) {
-                    mappings.accept(writer);
+                    mappings.accept(new MappingSourceNsSwitch(writer, MappingsNamespace.OFFICIAL.toString()));
                 }
             }
 
