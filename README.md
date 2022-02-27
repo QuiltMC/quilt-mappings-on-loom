@@ -46,4 +46,5 @@ Replace `QMoL_VERSION` in `build.gradle` with the version corresponding to the v
 | Loom Version | QMoL Version |
 | - | - |
 | 0.10 | 3.1.2 |
-| 0.11 | 4.0.0 |
+| 0.11.31- | 4.0.0 |
+| 0.11.32+ | 4.1.0 |
