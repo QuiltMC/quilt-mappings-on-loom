@@ -25,12 +25,12 @@ pluginManagement {
         maven { url = "https://maven.quiltmc.org/repository/release" }
     }
 }
-``` 
-`build.gradle`
+```
+`build.gradle`:
 ```groovy
 plugins {
   // ...
-  id "org.quiltmc.quilt-mappings-on-loom" version "3.1.1"
+  id "org.quiltmc.quilt-mappings-on-loom" version "QMoL_VERSION"
 }
 
 // ...
@@ -41,3 +41,10 @@ dependencies {
    })
 }
 ```
+### QMoL Versions
+Replace `QMoL_VERSION` in `build.gradle` with the version corresponding to the version of Loom being used:
+| Loom Version | QMoL Version |
+| - | - |
+| 0.10 | 3.1.2 |
+| 0.11.31- | 4.0.0 |
+| 0.11.32+ | 4.1.0 |

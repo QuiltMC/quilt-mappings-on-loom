@@ -1,5 +1,5 @@
 /*
- * Copyright 2021 QuiltMC
+ * Copyright 2021, 2022 QuiltMC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,7 +22,11 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
+import java.util.function.Predicate;
 
+import net.fabricmc.loom.configuration.providers.mappings.extras.unpick.UnpickLayer;
+import net.fabricmc.loom.util.Constants;
+import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
 import org.gradle.util.GFileUtils;
@@ -37,7 +41,16 @@ import net.fabricmc.mappingio.format.MappingFormat;
 import net.fabricmc.mappingio.format.Tiny2Reader;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
+@SuppressWarnings("UnstableApiUsage")
 public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
+    private static final int HASH_CODE_VERSION_BASE = 1;
+    private static final int HASH_CODE_VERSION_EXTRA_BITS = 8;
+    private static final int HASH_CODE_VERSION = (1 << HASH_CODE_VERSION_EXTRA_BITS) + HASH_CODE_VERSION_BASE;
+
+    private static int mappingsHashCode(String mappings) {
+        return Objects.hash(mappings, HASH_CODE_VERSION);
+    }
+
     @Override
     public void apply(Project target) {
         target.getExtensions().create("quiltMappings", QuiltMappingsOnLoomExtension.class, target);
@@ -79,7 +92,7 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
 
             @Override
             public int hashCode() {
-                return Objects.hash(quiltMappings);
+                return mappingsHashCode(quiltMappings);
             }
         }
     }
@@ -97,38 +110,42 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
                 List<File> quiltMappings = new ArrayList<>(project.getConfigurations().detachedConfiguration(project.getDependencies().create(this.quiltMappings)).resolve());
 
                 File hashedFile = project.file(".gradle/qm/hashed_" + minecraftVersion + quiltMappingsBuild + ".tiny");
-                downloadFile(quiltMappings.get(1), hashedFile);
+                extractMappings(quiltMappings.get(1), hashedFile);
 
                 File quiltMappingsFile = project.file(".gradle/qm/qm_" + minecraftVersion + quiltMappingsBuild + ".tiny");
-                downloadFile(quiltMappings.get(0), quiltMappingsFile);
+                extractMappings(quiltMappings.get(0), quiltMappingsFile);
 
                 MemoryMappingTree mappings = new MemoryMappingTree();
 
-                MemoryMappingTree hashed = new MemoryMappingTree();
-                try (FileReader reader = new FileReader(hashedFile)) {
-                    Tiny2Reader.read(reader, hashed);
-                }
-                hashed.accept(mappings);
-
+                // Load qm before hashed to avoid losing mappings without hashed names (i.e. unobfuscated names and <init>s)
                 try (FileReader reader = new FileReader(quiltMappingsFile)) {
                     Tiny2Reader.read(reader, mappings);
                 }
 
+                try (FileReader reader = new FileReader(hashedFile)) {
+                    // Change source namespace to hashed to allow merging with qm mapping tree
+                    Tiny2Reader.read(reader, new MappingSourceNsSwitch(mappings, "hashed"));
+                }
+
                 try (MappingWriter writer = MappingWriter.create(new FileWriter(intermediaryToQm), MappingFormat.TINY_2)) {
-                    mappings.accept(writer);
+                    mappings.accept(new MappingSourceNsSwitch(writer, MappingsNamespace.OFFICIAL.toString()));
                 }
             }
 
             Tiny2Reader.read(new FileReader(intermediaryToQm), mappingVisitor);
         }
 
-        private void downloadFile(File dependency, File output) {
+        private void extractMappings(File dependency, File output) {
+            extractFile(dependency, output, file -> file.getName().endsWith("mappings.tiny"));
+        }
+
+        private void extractFile(File dependency, File output, Predicate<File> filter) {
             if (!output.exists()) {
                 GFileUtils.copyFile(project
                         .zipTree(dependency)
                         .getFiles()
                         .stream()
-                        .filter(file -> file.getName().endsWith("mappings.tiny"))
+                        .filter(filter)
                         .findFirst()
                         .get(), output);
             }
@@ -138,5 +155,30 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
         public MappingsNamespace getSourceNamespace() {
             return MappingsNamespace.OFFICIAL;
         }
+
+        // TODO: re-enable once https://github.com/FabricMC/fabric-loom/pull/605 is merged or the issue is fixed
+        // @Override
+        // public UnpickData getUnpickData() throws IOException {
+        //     String minecraftVersion = context.minecraftProvider().minecraftVersion();
+        //
+        //     String quiltMappingsBuild = "+build" + quiltMappings.substring(quiltMappings.lastIndexOf("."), quiltMappings.lastIndexOf(":"));
+        //     File definitions = project.file(".gradle/qm/unpick_definitions_" + minecraftVersion + quiltMappingsBuild + ".unpick");
+        //     File metadata = project.file(".gradle/qm/unpick_metadata_" + minecraftVersion + quiltMappingsBuild + ".json");
+        //
+        //     if (!definitions.exists() || !metadata.exists()) {
+        //         List<File> quiltMappings = new ArrayList<>(project.getConfigurations().detachedConfiguration(project.getDependencies().create(this.quiltMappings)).resolve());
+        //
+        //         extractFile(quiltMappings.get(0), definitions, file -> file.getName().endsWith("definitions.unpick"));
+        //         extractFile(quiltMappings.get(0), metadata, file -> file.getName().endsWith("unpick.json"));
+        //     }
+        //
+        //     String configuration = Constants.Configurations.MAPPING_CONSTANTS;
+        //     if (project.getConfigurations().getByName(configuration).getDependencies().isEmpty()) {
+        //         String dependency = quiltMappings.substring(0, quiltMappings.lastIndexOf(":")) + ":constants";
+        //         project.getDependencies().add(configuration, dependency);
+        //     }
+        //
+        //     return UnpickData.read(metadata.toPath(), definitions.toPath());
+        // }
     }
 }

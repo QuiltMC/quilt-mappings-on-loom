@@ -6,7 +6,8 @@ plugins {
 }
 
 group = "org.quiltmc"
-version = "4.0.0"
+// Don't forget to update README.MD
+version = "4.1.0"
 
 repositories {
     mavenCentral()
