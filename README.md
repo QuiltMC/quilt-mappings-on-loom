@@ -41,6 +41,13 @@ dependencies {
    })
 }
 ```
+`gradle.properties`:
+```properties
+minecraft_version=1.18.2
+quilt_mappings=22
+
+# ...
+```
 ### QMoL Versions
 Replace `QMoL_VERSION` in `build.gradle` with the version corresponding to the version of Loom being used:
 | Loom Version | QMoL Version |
@@ -48,3 +55,4 @@ Replace `QMoL_VERSION` in `build.gradle` with the version corresponding to the v
 | 0.10 | 3.1.2 |
 | 0.11.31- | 4.0.0 |
 | 0.11.32+ | 4.1.0 |
+|          | 4.2.0 |
