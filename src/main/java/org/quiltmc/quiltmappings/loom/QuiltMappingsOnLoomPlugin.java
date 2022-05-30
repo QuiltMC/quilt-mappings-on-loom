@@ -24,11 +24,16 @@ import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
 
+import net.fabricmc.loom.LoomRepositoryPlugin;
 import net.fabricmc.loom.configuration.providers.mappings.extras.unpick.UnpickLayer;
 import net.fabricmc.loom.util.Constants;
 import net.fabricmc.mappingio.adapter.MappingSourceNsSwitch;
 import org.gradle.api.Plugin;
 import org.gradle.api.Project;
+import org.gradle.api.artifacts.dsl.RepositoryHandler;
+import org.gradle.api.initialization.Settings;
+import org.gradle.api.invocation.Gradle;
+import org.gradle.api.plugins.PluginAware;
 import org.gradle.util.GFileUtils;
 
 import net.fabricmc.loom.api.mappings.layered.MappingContext;
@@ -42,7 +47,7 @@ import net.fabricmc.mappingio.format.Tiny2Reader;
 import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 @SuppressWarnings("UnstableApiUsage")
-public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
+public class QuiltMappingsOnLoomPlugin implements Plugin<PluginAware> {
     private static final int HASH_CODE_VERSION_BASE = 1;
     private static final int HASH_CODE_VERSION_EXTRA_BITS = 8;
     private static final int HASH_CODE_VERSION = (1 << HASH_CODE_VERSION_EXTRA_BITS) + HASH_CODE_VERSION_BASE;
@@ -52,15 +57,30 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
     }
 
     @Override
-    public void apply(Project target) {
-        target.getExtensions().create("quiltMappings", QuiltMappingsOnLoomExtension.class, target);
+    public void apply(PluginAware target) {
+        if (target instanceof Settings set) {
+            declareRepositories(set.getDependencyResolutionManagement().getRepositories());
+        } else if (target instanceof Project project) {
+            project.getExtensions().create("quiltMappings", QuiltMappingsOnLoomExtension.class, target);
 
-        target.getRepositories().maven(repo -> {
+            // piggyback off of Loom to determine if we need to declare repositories
+            if (!project.getGradle().getPlugins().hasPlugin(LoomRepositoryPlugin.class)) {
+                declareRepositories(project.getRepositories());
+            }
+        } else if (target instanceof Gradle) {
+            // do nothing
+        } else {
+            throw new IllegalArgumentException("Unsupported target type: " + target.getClass().getName());
+        }
+    }
+
+    private static void declareRepositories(RepositoryHandler repositories) {
+        repositories.maven(repo -> {
             repo.setName("Quilt Releases");
             repo.setUrl("https://maven.quiltmc.org/repository/release");
         });
 
-        target.getRepositories().maven(repo -> {
+        repositories.maven(repo -> {
             repo.setName("Quilt Snapshots");
             repo.setUrl("https://maven.quiltmc.org/repository/snapshot");
         });
@@ -85,9 +105,16 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
 
         private record MappingLayerMappingsSpec(Project project, String quiltMappings)
                 implements MappingsSpec<MappingLayer> {
+
+            // TODO: re-enable for Fabric once https://github.com/FabricMC/fabric-loom/pull/605 is merged or the issue is fixed
             @Override
             public MappingLayer createLayer(MappingContext context) {
-                return new QuiltMappingsLayer(context, project, quiltMappings);
+                var mappingsLayer = new QuiltMappingsLayer(context, project, quiltMappings);
+                if (project.getGradle().getPlugins().hasPlugin("org.quiltmc.loom")) {
+                    return new CombinedMappingLayer(mappingsLayer, new QuiltMappingsUnpickLayer(mappingsLayer));
+                } else {
+                    return mappingsLayer;
+                }
             }
 
             @Override
@@ -155,30 +182,46 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
         public MappingsNamespace getSourceNamespace() {
             return MappingsNamespace.OFFICIAL;
         }
+    }
 
-        // TODO: re-enable once https://github.com/FabricMC/fabric-loom/pull/605 is merged or the issue is fixed
-        // @Override
-        // public UnpickData getUnpickData() throws IOException {
-        //     String minecraftVersion = context.minecraftProvider().minecraftVersion();
-        //
-        //     String quiltMappingsBuild = "+build" + quiltMappings.substring(quiltMappings.lastIndexOf("."), quiltMappings.lastIndexOf(":"));
-        //     File definitions = project.file(".gradle/qm/unpick_definitions_" + minecraftVersion + quiltMappingsBuild + ".unpick");
-        //     File metadata = project.file(".gradle/qm/unpick_metadata_" + minecraftVersion + quiltMappingsBuild + ".json");
-        //
-        //     if (!definitions.exists() || !metadata.exists()) {
-        //         List<File> quiltMappings = new ArrayList<>(project.getConfigurations().detachedConfiguration(project.getDependencies().create(this.quiltMappings)).resolve());
-        //
-        //         extractFile(quiltMappings.get(0), definitions, file -> file.getName().endsWith("definitions.unpick"));
-        //         extractFile(quiltMappings.get(0), metadata, file -> file.getName().endsWith("unpick.json"));
-        //     }
-        //
-        //     String configuration = Constants.Configurations.MAPPING_CONSTANTS;
-        //     if (project.getConfigurations().getByName(configuration).getDependencies().isEmpty()) {
-        //         String dependency = quiltMappings.substring(0, quiltMappings.lastIndexOf(":")) + ":constants";
-        //         project.getDependencies().add(configuration, dependency);
-        //     }
-        //
-        //     return UnpickData.read(metadata.toPath(), definitions.toPath());
-        // }
+    private record QuiltMappingsUnpickLayer(QuiltMappingsLayer layer) implements UnpickLayer {
+
+        @Override
+        public UnpickLayer.UnpickData getUnpickData() throws IOException {
+            Project project = layer.project;
+            String quiltMappings = layer.quiltMappings;
+            String minecraftVersion = layer.context.minecraftProvider().minecraftVersion();
+
+            String quiltMappingsBuild = "+build" + quiltMappings.substring(quiltMappings.lastIndexOf("."), quiltMappings.lastIndexOf(":"));
+            File definitions = project.file(".gradle/qm/unpick_definitions_" + minecraftVersion + quiltMappingsBuild + ".unpick");
+            File metadata = project.file(".gradle/qm/unpick_metadata_" + minecraftVersion + quiltMappingsBuild + ".json");
+
+            if (!definitions.exists() || !metadata.exists()) {
+                List<File> mappingsList = new ArrayList<>(project.getConfigurations().detachedConfiguration(project.getDependencies().create(quiltMappings)).resolve());
+
+                layer.extractFile(mappingsList.get(0), definitions, file -> file.getName().endsWith("definitions.unpick"));
+                layer.extractFile(mappingsList.get(0), metadata, file -> file.getName().endsWith("unpick.json"));
+            }
+
+            String configuration = Constants.Configurations.MAPPING_CONSTANTS;
+            if (project.getConfigurations().getByName(configuration).getDependencies().isEmpty()) {
+                String dependency = quiltMappings.substring(0, quiltMappings.lastIndexOf(":")) + ":constants";
+                project.getDependencies().add(configuration, dependency);
+            }
+
+            return UnpickData.read(metadata.toPath(), definitions.toPath());
+        }
+    }
+
+    private record CombinedMappingLayer(QuiltMappingsLayer mappings, QuiltMappingsUnpickLayer unpick) implements MappingLayer, UnpickLayer {
+        @Override
+        public void visit(MappingVisitor mappingVisitor) throws IOException {
+            mappings.visit(mappingVisitor);
+        }
+
+        @Override
+        public UnpickLayer.UnpickData getUnpickData() throws IOException {
+            return unpick.getUnpickData();
+        }
     }
 }
