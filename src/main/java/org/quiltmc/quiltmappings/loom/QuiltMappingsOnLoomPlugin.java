@@ -138,7 +138,7 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
                 MemoryMappingTree tree = new MemoryMappingTree();
                 mappingTree.accept(tree);
                 Tiny2Reader.read(new FileReader(intermediaryToQm), tree);
-                tree.accept(new MappingNsCompleter(mappingVisitor, Map.of(MappingsNamespace.INTERMEDIARY.toString(), MappingsNamespace.OFFICIAL.toString()), true));
+                tree.accept(new MappingNsCompleter(mappingVisitor, Map.of(MappingsNamespace.INTERMEDIARY.toString(), MappingsNamespace.OFFICIAL.toString())));
             } else {
                 // Shouldn't happen, unless the impl changes to not use a MappingTree
                 Tiny2Reader.read(new FileReader(intermediaryToQm), mappingVisitor);
