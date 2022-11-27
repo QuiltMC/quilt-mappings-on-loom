@@ -1,6 +1,6 @@
 plugins {
     java
-    id("fabric-loom") version "0.11.32"
+    id("fabric-loom") version "1.0.+"
     id("org.quiltmc.quilt-mappings-on-loom")
 }
 
@@ -14,9 +14,10 @@ repositories {
     }
 }
 
-var minecraft_version = "1.18.2-rc1"
-var quilt_mappings = "1.18.2-rc1+build.1"
-var loader_version = "0.12.2"
+var minecraft_version = "1.18.2"
+// Test QMoL crashing with post-Intermediary publication builds by swtichting to 1.18.2+build.26
+var quilt_mappings = "1.18.2+build.24"
+var loader_version = "0.14.10"
 
 dependencies {
     minecraft("com.mojang:minecraft:${minecraft_version}")
