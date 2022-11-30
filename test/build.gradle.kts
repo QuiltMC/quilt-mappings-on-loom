@@ -15,7 +15,7 @@ repositories {
 }
 
 var minecraft_version = "1.18.2"
-// Test QMoL crashing with post-Intermediary publication builds by swtichting to 1.18.2+build.26
+// QMoL crashing with post-Intermediary publication builds can be tested by switching to 1.18.2+build.26
 var quilt_mappings = "1.18.2+build.24"
 var loader_version = "0.14.10"
 
