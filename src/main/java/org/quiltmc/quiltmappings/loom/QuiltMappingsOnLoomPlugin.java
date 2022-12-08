@@ -80,7 +80,14 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
             return mappings(quiltMappings);
         }
 
+        @Deprecated
         public MappingsSpec<?> mappings(String quiltMappings) {
+            project.getLogger().warn("""
+                WARNING: Quilt Mappings on Loom has been succeeded by Intermediary publications of Quilt Mappings!
+                Update to Quilt Mappings's latest version, use the "intermediary-v2" classifier instead of "v2" and use it like you would use Yarn!
+                Usage examples of the new method may be seen here: https://github.com/QuiltMC/quilt-template-mod/blob/1.19/build.gradle#L22
+                With that, Quilt Mappings on Loom has been abandoned and will break with post-Intermediary publications builds.  
+                """);
             return new MappingLayerMappingsSpec(project, quiltMappings);
         }
 
@@ -109,6 +116,10 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
 
             if (!intermediaryToQm.exists()) {
                 List<File> quiltMappings = new ArrayList<>(project.getConfigurations().detachedConfiguration(project.getDependencies().create(this.quiltMappings)).resolve());
+
+                if (quiltMappings.size() < 2) {
+                    throw new UnsupportedOperationException("The Quilt Mappings build used here is likely to be a post-Intermediary publications build, which are incompatible with Quilt Mappings on Loom!");
+                }
 
                 File hashedFile = project.file(".gradle/qm/hashed_" + minecraftVersion + quiltMappingsBuild + ".tiny");
                 extractMappings(quiltMappings.get(1), hashedFile);
