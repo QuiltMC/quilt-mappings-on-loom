@@ -47,4 +47,6 @@ Replace `QMoL_VERSION` in `build.gradle` with the version corresponding to the v
 | - | - |
 | 0.10 | 3.1.2 |
 | 0.11.31- | 4.0.0 |
-| 0.11.32+ | 4.2.1 |
+| 0.11.32+ | 4.2.2 |
+
+Note: Version 4.2.2 deprecates this plugin. No further versions will be released.
