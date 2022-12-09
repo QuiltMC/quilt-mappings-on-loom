@@ -44,7 +44,7 @@ import net.fabricmc.mappingio.tree.MemoryMappingTree;
 
 @SuppressWarnings("UnstableApiUsage")
 public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
-    private static final int HASH_CODE_VERSION_BASE = 2;
+    private static final int HASH_CODE_VERSION_BASE = 3;
     private static final int HASH_CODE_VERSION_EXTRA_BITS = 8;
     private static final int HASH_CODE_VERSION = (1 << HASH_CODE_VERSION_EXTRA_BITS) + HASH_CODE_VERSION_BASE;
 
@@ -144,16 +144,16 @@ public class QuiltMappingsOnLoomPlugin implements Plugin<Project> {
                 }
             }
 
-            if (mappingVisitor instanceof MappingTree mappingTree) {
-                // Complete missing intermediary names with official ones (i.e. <init>s) to avoid losing mappings
-                MemoryMappingTree tree = new MemoryMappingTree();
-                mappingTree.accept(tree);
-                Tiny2Reader.read(new FileReader(intermediaryToQm), tree);
-                tree.accept(new MappingNsCompleter(mappingVisitor, Map.of(MappingsNamespace.INTERMEDIARY.toString(), MappingsNamespace.OFFICIAL.toString())));
-            } else {
-                // Shouldn't happen, unless the impl changes to not use a MappingTree
-                Tiny2Reader.read(new FileReader(intermediaryToQm), mappingVisitor);
-            }
+            // if (mappingVisitor instanceof MappingTree mappingTree) {
+            //     // Complete missing intermediary names with official ones (i.e. <init>s) to avoid losing mappings
+            //     MemoryMappingTree tree = new MemoryMappingTree();
+            //     mappingTree.accept(tree);
+            //     Tiny2Reader.read(new FileReader(intermediaryToQm), tree);
+            //     tree.accept(new MappingNsCompleter(mappingVisitor, Map.of(MappingsNamespace.INTERMEDIARY.toString(), MappingsNamespace.OFFICIAL.toString())));
+            // } else {
+            //     // Shouldn't happen, unless the impl changes to not use a MappingTree
+            Tiny2Reader.read(new FileReader(intermediaryToQm), mappingVisitor);
+            // }
         }
 
         private void extractMappings(File dependency, File output) {
